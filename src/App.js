@@ -19,7 +19,7 @@ function App() {
 
   const createDirectoriesTree = (url, paths) => {
     let children = [];
-    let level = { id: "root", name: `${url}/`, children };
+    let level = { id: "root", name: `${url}`, children };
 
     paths.forEach(path => {
       path
@@ -38,14 +38,10 @@ function App() {
   };
 
   const getPaths = (host, text) => {
-    const hostItems = host.split(".");
-    const clearedHost = hostItems[0].includes("www")
-      ? host.slice(4, host.length)
-      : host;
     const urlRegex =
       /(https?:\/\/(www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_\+.~#?&//=]*))/g;
     const matches = text.match(urlRegex);
-    const filtered = matches.filter(item => item.includes(clearedHost));
+    const filtered = matches.filter(item => item.includes(host));
     const paths = filtered.map(item => {
       var url = new URL(item);
       return url.pathname;
@@ -90,10 +86,16 @@ function App() {
       });
 
       const newHtml = await result.text();
-      setServerInfo(result.headers);
+      const headers = [...result.headers];
+      const headersObject = headers.reduce(
+        (res, item) => ({ ...res, [item[0]]: item[1] }),
+        {}
+      );
+      const finalHost = headersObject["x-final-url"] || formData.host;
+      setServerInfo(headers);
 
-      const paths = getPaths(formData.host, newHtml);
-      const directories = createDirectoriesTree(formData.host, paths);
+      const paths = getPaths(finalHost, newHtml);
+      const directories = createDirectoriesTree(finalHost, paths);
       sortTree(directories);
 
       setDirectoriesTree(directories);
@@ -185,7 +187,15 @@ function App() {
         {serverInfo !== null && (
           <div style={{ marginBottom: 30, textAlign: "center" }}>
             <div>Информация о сервере</div>
-            <div>{serverInfo ? JSON.stringify(serverInfo) : "Не найдено"}</div>
+            <div style={{ fontSize: 14 }}>
+              {serverInfo
+                ? serverInfo.map((item, index) => (
+                    <div key={index}>
+                      {item[0]}: {item[1]}
+                    </div>
+                  ))
+                : "Не найдено"}
+            </div>
           </div>
         )}
         {directoriesTree?.name && (
