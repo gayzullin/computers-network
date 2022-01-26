@@ -1,5 +1,5 @@
 import "./App.css";
-import { Form, Button } from "react-bootstrap";
+import { Form, Button, Row, Col } from "react-bootstrap";
 import { useEffect, useState } from "react";
 import TreeView from "@mui/lab/TreeView";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
@@ -7,8 +7,15 @@ import ChevronRightIcon from "@mui/icons-material/ChevronRight";
 import TreeItem from "@mui/lab/TreeItem";
 
 function App() {
-  const [formData, setFormData] = useState({});
+  const [formData, setFormData] = useState({
+    protcol: "http",
+    host: "",
+    port: "80",
+    cors: false
+  });
+  const [serverInfo, setServerInfo] = useState(null);
   const [directoriesTree, setDirectoriesTree] = useState({});
+  const [serverError, setServerError] = useState("");
 
   const createDirectoriesTree = (url, paths) => {
     let children = [];
@@ -30,11 +37,15 @@ function App() {
     return level;
   };
 
-  const getPaths = (url, text) => {
+  const getPaths = (host, text) => {
+    const hostItems = host.split(".");
+    const clearedHost = hostItems[0].includes("www")
+      ? host.slice(4, host.length)
+      : host;
     const urlRegex =
       /(https?:\/\/(www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_\+.~#?&//=]*))/g;
     const matches = text.match(urlRegex);
-    const filtered = matches.filter(item => item.includes(url));
+    const filtered = matches.filter(item => item.includes(clearedHost));
     const paths = filtered.map(item => {
       var url = new URL(item);
       return url.pathname;
@@ -61,33 +72,39 @@ function App() {
 
   const submitForm = async e => {
     e.preventDefault();
-    const isDev = window.location.hostname.includes("localhost");
-    const url = isDev
-      ? "https://cors-anywhere.herokuapp.com/" + "https://" + formData.url
-      : "https://" + formData.url;
-    const result = await fetch(url, {
-      mode: "cors",
-      headers: {
-        "Access-Control-Allow-Headers":
-          "Origin, X-Requested-With, Content-Type, Accept",
-        "Access-Control-Allow-Origin": "*",
-        "Content-Type": "application/json"
-      }
-    });
-    const newHtml = await result.text();
-    console.log("result", result);
-    console.log("header", result.headers);
+    setServerError("");
 
-    const paths = getPaths(formData.url, newHtml);
-    const directories = createDirectoriesTree(formData.url, paths);
-    sortTree(directories);
+    const link = `${formData.protcol}://${formData.host}:${formData.port}`;
+    const url = formData.cors
+      ? "https://cors-anywhere.herokuapp.com/" + link
+      : link;
+    try {
+      const result = await fetch(url, {
+        mode: "cors",
+        headers: {
+          "Access-Control-Allow-Headers":
+            "Origin, X-Requested-With, Content-Type, Accept",
+          "Access-Control-Allow-Origin": "*",
+          "Content-Type": "application/json"
+        }
+      });
 
-    setDirectoriesTree(directories);
+      const newHtml = await result.text();
+      setServerInfo(result.headers);
+
+      const paths = getPaths(formData.host, newHtml);
+      const directories = createDirectoriesTree(formData.host, paths);
+      sortTree(directories);
+
+      setDirectoriesTree(directories);
+    } catch (e) {
+      setServerError(e.message);
+    }
   };
 
   const handleChange = ({ target }) => {
     let name = target.name;
-    let value = target.value;
+    let value = target.type === "checkbox" ? target.checked : target.value;
     setFormData({ ...formData, [name]: value });
   };
 
@@ -103,26 +120,74 @@ function App() {
     <div className="App">
       <div className="App-header">
         <Form style={{ marginBottom: 50, marginTop: 50 }} onSubmit={submitForm}>
-          <Form.Group className="mb-3" controlId="formBasicEmail">
+          <Form.Group style={{ textAlign: "center" }} className="mb-3">
             <Form.Label>Адрес URL</Form.Label>
-            <Form.Control
-              type="text"
-              name="url"
-              placeholder="Enter url"
+            <Row>
+              <Col>
+                <Form.Control
+                  type="text"
+                  name="protocol"
+                  placeholder="Enter protocol"
+                  defaultValue="http"
+                  required
+                  onChange={handleChange}
+                />
+              </Col>
+              ://
+              <Col>
+                <Form.Control
+                  type="text"
+                  name="host"
+                  placeholder="Enter host"
+                  required
+                  onChange={handleChange}
+                />
+              </Col>
+              :
+              <Col>
+                <Form.Control
+                  type="text"
+                  name="port"
+                  placeholder="Enter port"
+                  defaultValue="80"
+                  required
+                  onChange={handleChange}
+                />
+              </Col>
+            </Row>
+          </Form.Group>
+          <Form.Group className="mb-3">
+            <Form.Check
+              style={{ flexDirection: "row", fontSize: 16 }}
+              type="checkbox"
+              name="cors"
+              label="Использовать CORS прокси"
               onChange={handleChange}
             />
-            <Form.Text className="text-muted">
-              We'll never share your email with anyone else.
-            </Form.Text>
+            {formData.cors && (
+              <div style={{ fontSize: 16 }}>
+                <div>Сначала нужно подтвердить по ссылке:</div>
+                <a href="https://cors-anywhere.herokuapp.com/">
+                  https://cors-anywhere.herokuapp.com/
+                </a>
+              </div>
+            )}
           </Form.Group>
-          <Button variant="primary" type="submit">
-            Submit
-          </Button>
+          <Row style={{ textAlign: "center" }}>
+            <Col>
+              <Button variant="primary" type="submit">
+                Submit
+              </Button>
+            </Col>
+          </Row>
         </Form>
-        <div style={{ marginBottom: 30 }}>
-          <div>Информация о сервере</div>
-          <div></div>
-        </div>
+        {serverError && <div>Ошибка: {serverError}</div>}
+        {serverInfo !== null && (
+          <div style={{ marginBottom: 30, textAlign: "center" }}>
+            <div>Информация о сервере</div>
+            <div>{serverInfo ? JSON.stringify(serverInfo) : "Не найдено"}</div>
+          </div>
+        )}
         {directoriesTree?.name && (
           <div style={{ height: 400 }}>
             <div>Дерево каталогов</div>
