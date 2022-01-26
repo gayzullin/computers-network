@@ -1,0 +1,15 @@
+{
+  "files": {
+    "main.css": "/computers-network/static/css/main.ff8423cd.css",
+    "main.js": "/computers-network/static/js/main.420a1fbb.js",
+    "static/js/787.275522ae.chunk.js": "/computers-network/static/js/787.275522ae.chunk.js",
+    "index.html": "/computers-network/index.html",
+    "main.ff8423cd.css.map": "/computers-network/static/css/main.ff8423cd.css.map",
+    "main.420a1fbb.js.map": "/computers-network/static/js/main.420a1fbb.js.map",
+    "787.275522ae.chunk.js.map": "/computers-network/static/js/787.275522ae.chunk.js.map"
+  },
+  "entrypoints": [
+    "static/css/main.ff8423cd.css",
+    "static/js/main.420a1fbb.js"
+  ]
+}
